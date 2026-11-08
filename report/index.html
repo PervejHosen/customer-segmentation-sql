@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Customer Segmentation &amp; Retention · Pervej Hosen</title>
+<meta name="description" content="RFM segmentation, segment migration and cohort retention for 541,909 real transactions from a UK online retailer, built in SQL with a bronze, silver and gold pipeline.">
+<meta property="og:title" content="Customer Segmentation & Retention · Pervej Hosen">
+<meta property="og:description" content="31% of customers drive 77% of sales. RFM segmentation, migration and cohort retention in SQL.">
+<link rel="icon" href="https://pervejhosen.github.io/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --navy: #020817; --ink: #0f172a; --muted: #475569; --faint: #64748b; --line: #e2e8f0; --grid: #eef2f6;
+  --bg: #f6f9fc; --card: #ffffff; --accent: #0891b2; --accent-2: #2a4fa8;
+  --s1: #0891b2; --s2: #2a4fa8; --s3: #eb6834; --s4: #9b59d0;
+  --radius: 14px; --shadow: 0 10px 30px -22px rgba(15, 23, 42, .35);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body { font-family: Inter, system-ui, -apple-system, "Segoe UI", sans-serif; background: var(--bg); color: var(--ink); line-height: 1.6; -webkit-font-smoothing: antialiased; }
+a { color: var(--accent); }
+.wrap { max-width: 1120px; margin: 0 auto; padding: 0 20px; }
+
+/* top bar + hero */
+.top { background: var(--navy); color: #e2e8f0; }
+.top-bar { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 16px 0; font-size: .92rem; }
+.top-bar a { color: #e2e8f0; text-decoration: none; font-weight: 600; }
+.top-bar a:hover { color: #22d3ee; }
+.top-bar .gh { border: 1px solid rgba(34, 211, 238, .45); border-radius: 999px; padding: 6px 14px; white-space: nowrap; }
+.hero { padding: 36px 0 56px; }
+.kicker { font-size: .78rem; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: #22d3ee; }
+.hero h1 { font-size: clamp(1.9rem, 4.4vw, 3rem); line-height: 1.12; letter-spacing: -.02em; font-weight: 800; color: #fff; margin: 10px 0 14px; max-width: 820px; }
+.hero h1 span { background: linear-gradient(90deg, #22d3ee, #3b82f6); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.hero p { color: #cbd5e1; max-width: 760px; font-size: 1.05rem; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 20px; }
+.chips span { font-size: .75rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: #a5f3fc; border: 1px solid rgba(34, 211, 238, .35); background: rgba(34, 211, 238, .08); border-radius: 999px; padding: 4px 11px; }
+
+/* KPI tiles */
+.kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; margin-top: -34px; position: relative; }
+.kpi { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px 20px; box-shadow: var(--shadow); }
+.kpi b { display: block; font-size: 1.85rem; font-weight: 800; letter-spacing: -.02em; line-height: 1.15; }
+.kpi span { color: var(--muted); font-size: .88rem; }
+@media (max-width: 820px) { .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* sections */
+section { margin-top: 56px; }
+h2 { font-size: 1.55rem; letter-spacing: -.01em; font-weight: 800; margin-bottom: 6px; }
+.lead { color: var(--muted); max-width: 780px; margin-bottom: 20px; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 22px; box-shadow: var(--shadow); }
+.card + .card { margin-top: 16px; }
+.card h3 { font-size: 1.02rem; font-weight: 700; }
+.card .sub { color: var(--faint); font-size: .86rem; margin: 2px 0 14px; }
+.two { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; }
+@media (max-width: 900px) { .two { grid-template-columns: minmax(0, 1fr); } }
+
+/* findings */
+.findings { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.finding { background: var(--card); border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: var(--radius); padding: 18px 20px; box-shadow: var(--shadow); }
+.finding b { display: block; font-size: 1.5rem; font-weight: 800; color: var(--ink); line-height: 1.2; }
+.finding p { color: var(--muted); font-size: .95rem; margin-top: 4px; }
+@media (max-width: 760px) { .findings { grid-template-columns: minmax(0, 1fr); } }
+
+/* charts */
+.legend { display: flex; flex-wrap: wrap; gap: 16px; font-size: .85rem; color: var(--muted); margin-bottom: 10px; }
+.legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
+svg { display: block; width: 100%; height: auto; overflow: visible; }
+svg text { font-family: inherit; }
+.axis text, .tick { fill: var(--faint); font-size: 11px; }
+.lbl { fill: var(--ink); font-size: 11.5px; font-weight: 600; }
+.lbl-muted { fill: var(--muted); font-size: 11px; }
+.hit { cursor: default; }
+.scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.scroll svg { min-width: 640px; }
+.moves { list-style: none; display: grid; gap: 12px; }
+.moves li { padding-left: 14px; border-left: 3px solid var(--line); color: var(--muted); font-size: .93rem; }
+.moves li b { color: var(--ink); }
+.rules td, .rules th { text-align: left !important; }
+.scale { display: flex; align-items: center; gap: 8px; font-size: .78rem; color: var(--faint); margin-top: 10px; }
+.scale .bar { width: 140px; height: 8px; border-radius: 4px; background: linear-gradient(90deg, #eef7fb, #0b4f6c); }
+#tip { position: fixed; z-index: 50; pointer-events: none; background: var(--navy); color: #f1f5f9; font-size: .82rem; line-height: 1.45; padding: 8px 11px; border-radius: 8px; box-shadow: 0 12px 30px -10px rgba(0, 0, 0, .5); opacity: 0; transition: opacity .12s; max-width: 260px; }
+#tip b { color: #fff; }
+
+/* tables */
+details { margin-top: 14px; }
+summary { cursor: pointer; color: var(--accent); font-weight: 600; font-size: .9rem; }
+table { width: 100%; border-collapse: collapse; font-size: .86rem; margin-top: 10px; }
+th, td { text-align: right; padding: 7px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+th:first-child, td:first-child { text-align: left; }
+th { color: var(--faint); font-weight: 600; font-size: .78rem; text-transform: uppercase; letter-spacing: .04em; }
+
+/* actions */
+.actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+@media (max-width: 900px) { .actions { grid-template-columns: minmax(0, 1fr); } }
+.action { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px 20px; box-shadow: var(--shadow); }
+.action .tag { display: inline-block; font-size: .7rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; border-radius: 999px; padding: 3px 10px; margin-bottom: 8px; }
+.tag.p1 { background: #fee2e2; color: #991b1b; } .tag.p2 { background: #fef3c7; color: #92400e; } .tag.p3 { background: #e0f2fe; color: #075985; }
+.action h3 { font-size: 1.02rem; }
+.action .seg { color: var(--faint); font-size: .84rem; margin: 2px 0 8px; }
+.action p { color: var(--muted); font-size: .92rem; }
+
+/* method */
+.pipe { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+@media (max-width: 760px) { .pipe { grid-template-columns: minmax(0, 1fr); } }
+.layer { border-radius: 12px; padding: 16px 18px; border: 1px solid var(--line); background: #fff; }
+.layer h4 { font-size: .95rem; margin-bottom: 4px; }
+.layer p, .layer li { color: var(--muted); font-size: .88rem; }
+.layer ul { padding-left: 18px; margin-top: 4px; }
+.layer.b { border-top: 4px solid #b45309; } .layer.s { border-top: 4px solid #64748b; } .layer.g { border-top: 4px solid #ca8a04; }
+code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .85em; background: #eef2f6; padding: 1px 5px; border-radius: 4px; }
+.note { color: var(--faint); font-size: .84rem; margin-top: 10px; }
+footer { margin: 64px 0 40px; padding-top: 24px; border-top: 1px solid var(--line); color: var(--faint); font-size: .88rem; display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+@media (max-width: 560px) { .card, .finding, .action { padding: 16px; } .kpi b { font-size: 1.5rem; } }
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <div class="top-bar">
+      <a href="https://pervejhosen.github.io/#projects">← Pervej Hosen · Portfolio</a>
+      <a class="gh" href="https://github.com/PervejHosen/SQL_Project-2" target="_blank" rel="noopener">View code on GitHub ↗</a>
+    </div>
+    <div class="hero">
+      <p class="kicker">Case study · SQL · Customer analytics</p>
+      <h1>Customer Segmentation <span>&amp; Retention</span></h1>
+      <p>Which customers keep the business running, which ones are slipping away, and where should the next marketing pound go? An RFM segmentation of <b id="rawRows"></b> real transactions from a UK online gift retailer, built as a bronze → silver → gold SQL pipeline.</p>
+      <div class="chips"><span>SQL</span><span>DuckDB</span><span>Medallion architecture</span><span>RFM</span><span>Cohort analysis</span><span>Data cleaning</span></div>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="kpis" id="kpis"></div>
+
+  <section>
+    <h2>Key findings</h2>
+    <p class="lead">Dataset: UCI Online Retail, 1 Dec 2010 to 9 Dec 2011. Customers are scored on the day after the last order (10 Dec 2011).</p>
+    <div class="findings" id="findings"></div>
+  </section>
+
+  <section>
+    <h2>Who drives the revenue</h2>
+    <p class="lead">Each segment's share of customers next to its share of sales. When the second bar is much longer than the first, a small group is carrying the business.</p>
+    <div class="card">
+      <h3>Share of customers vs share of sales, by segment</h3>
+      <p class="sub">10 segments · every customer is assigned to exactly one</p>
+      <div class="legend"><span><i style="background:var(--s1)"></i>Share of customers</span><span><i style="background:var(--s2)"></i>Share of sales</span></div>
+      <div id="segBars"></div>
+      <details><summary>Show the segment table</summary><div class="scroll"><table id="segTable"></table></div></details>
+    </div>
+  </section>
+
+  <section>
+    <h2>The RFM map</h2>
+    <p class="lead">Customers placed by how recently they ordered (rows) and how often (columns). Top-right is where you want customers to be; the bottom-left corner is the dormant tail.</p>
+    <div class="card">
+      <h3>Customers by recency and frequency score</h3>
+      <p class="sub">Darker = more customers · hover a cell for sales</p>
+      <div class="scroll" id="rfGrid"></div>
+      <div class="scale"><span>fewer</span><span class="bar"></span><span>more customers</span></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>How customers move between segments</h2>
+    <p class="lead">The same scoring applied at the end of each quarter, using only the orders placed up to that date. This shows whether segments are growing or draining, which a one-off RFM snapshot cannot.</p>
+    <div class="two">
+      <div class="card">
+        <h3>Segment size at each quarter end</h3>
+        <p class="sub">Customers in four key segments</p>
+        <div class="legend" id="trendLegend"></div>
+        <div id="trend"></div>
+      </div>
+      <div class="card">
+        <h3>What the movement says</h3>
+        <p class="sub">Between 1 Oct and 10 Dec 2011</p>
+        <ul class="moves" id="moves"></ul>
+      </div>
+    </div>
+    <div class="card" style="margin-top:16px">
+      <h3>Where Q3's customers ended up</h3>
+      <p class="sub">Row = segment on 1 Oct 2011 · cell = share of that row in each segment on 10 Dec 2011 · hover for counts</p>
+      <div class="scroll" id="migration"></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Do new customers come back?</h2>
+    <p class="lead">Customers grouped by the month of their first order. Each cell is the share of that group who ordered again N months later.</p>
+    <div class="card">
+      <h3>Monthly cohort retention</h3>
+      <p class="sub">The Dec 2010 group includes customers who were already buying before the data starts, which is why it retains far better · Dec 2011 is a partial month (9 days)</p>
+      <div class="scroll" id="cohorts"></div>
+      <div class="scale"><span>0%</span><span class="bar"></span><span>higher retention</span></div>
+    </div>
+    <div class="two" style="margin-top:16px">
+      <div class="card"><h3>Monthly sales</h3><p class="sub">GBP · Dec 2011 is a partial month</p><div id="mSales"></div></div>
+      <div class="card"><h3>Active customers per month</h3><p class="sub">Customers with at least one order · Dec 2011 is partial</p><div id="mActive"></div></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>What I would do next</h2>
+    <p class="lead">Each segment needs a different conversation. Ordered by the revenue at stake.</p>
+    <div class="actions" id="actions"></div>
+  </section>
+
+  <section>
+    <h2>How it was built</h2>
+    <p class="lead">Plain SQL in three layers, run end to end with one command (<code>python run.py</code>). The same models port to Snowflake or BigQuery with minor syntax changes.</p>
+    <div class="pipe">
+      <div class="layer b"><h4>Bronze · raw</h4><p><span id="bronzeRows"></span> invoice lines loaded exactly as published.</p></div>
+      <div class="layer s"><h4>Silver · cleaned</h4><ul id="silverList"></ul></div>
+      <div class="layer g"><h4>Gold · analysis</h4><ul><li>One row per customer with R, F and M scores</li><li>Segment summary and R × F grid</li><li>Quarterly snapshots and migration</li><li>Monthly cohorts and trends</li></ul></div>
+    </div>
+    <div class="card" style="margin-top:16px">
+      <h3>Scoring rules</h3>
+      <p class="sub">Fixed business thresholds, so a score means the same thing at every snapshot and the 1,500 one-time buyers are never split across scores by an arbitrary tie-break</p>
+      <div class="scroll"><table class="rules">
+        <tr><th>Score</th><th>Recency (days since last order)</th><th>Frequency (orders)</th><th>Monetary (sales, GBP)</th></tr>
+        <tr><td>5</td><td>0–14</td><td>6 or more</td><td>2,000+</td></tr>
+        <tr><td>4</td><td>15–30</td><td>4–5</td><td>1,000–1,999</td></tr>
+        <tr><td>3</td><td>31–90</td><td>3</td><td>500–999</td></tr>
+        <tr><td>2</td><td>91–180</td><td>2</td><td>250–499</td></tr>
+        <tr><td>1</td><td>over 180</td><td>1</td><td>under 250</td></tr>
+      </table></div>
+      <p class="note">Segments come from the standard R × F grid (for example, R 5 and F 4–5 = Champions; R 1–2 and F 5 = Can't Lose). All 25 combinations map to a segment, so no customer lands in "other". The monetary score is kept for context and sorting.</p>
+    </div>
+  </section>
+
+  <footer>
+    <span>Data: <a href="https://archive.ics.uci.edu/dataset/352/online+retail" target="_blank" rel="noopener">UCI Machine Learning Repository, Online Retail</a> (CC BY 4.0). Analysis by Pervej Hosen.</span>
+    <a href="https://pervejhosen.github.io/#projects">← Back to portfolio</a>
+  </footer>
+</main>
+<div id="tip" role="tooltip"></div>
+
+<script src="data.js"></script>
+<script>
+(() => {
+  const $ = s => document.querySelector(s);
+  const fmt = n => Math.round(n).toLocaleString("en-GB");
+  const gbp = n => n >= 1e6 ? "£" + (n / 1e6).toFixed(2) + "M" : n >= 1e3 ? "£" + Math.round(n / 1e3).toLocaleString("en-GB") + "k" : "£" + fmt(n);
+  const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const NS = "http://www.w3.org/2000/svg";
+  const monthName = iso => new Date(iso + "T00:00:00").toLocaleString("en-GB", { month: "short", year: "2-digit" }).replace(" ", " ’");
+
+  // ---------- tooltip ----------
+  const tip = $("#tip");
+  const showTip = (e, html) => {
+    tip.innerHTML = html; tip.style.opacity = 1;
+    const x = Math.min(e.clientX + 14, innerWidth - tip.offsetWidth - 8);
+    const y = e.clientY + 16 + tip.offsetHeight > innerHeight ? e.clientY - tip.offsetHeight - 12 : e.clientY + 16;
+    tip.style.left = x + "px"; tip.style.top = y + "px";
+  };
+  const hideTip = () => tip.style.opacity = 0;
+  const bindTip = (el, html) => { el.addEventListener("mousemove", e => showTip(e, html)); el.addEventListener("mouseleave", hideTip); el.addEventListener("touchstart", e => showTip(e.touches[0], html), { passive: true }); };
+
+  // sequential ramp (one hue, light -> dark)
+  const lerp = (a, b, t) => Math.round(a + (b - a) * t);
+  const ramp = t => { t = Math.max(0, Math.min(1, t)); const A = [238, 247, 251], B = [11, 79, 108]; return `rgb(${lerp(A[0], B[0], t)},${lerp(A[1], B[1], t)},${lerp(A[2], B[2], t)})`; };
+  const inkOn = t => t > .5 ? "#ffffff" : "#0f172a";
+
+  const svg = (w, h) => { const s = document.createElementNS(NS, "svg"); s.setAttribute("viewBox", `0 0 ${w} ${h}`); s.setAttribute("role", "img"); return s; };
+  const el = (name, attrs, parent, text) => { const n = document.createElementNS(NS, name); for (const k in attrs) n.setAttribute(k, attrs[k]); if (text != null) n.textContent = text; parent && parent.appendChild(n); return n; };
+
+  const K = DATA.kpis, SEG = DATA.gold_segment_summary;
+  const segBy = Object.fromEntries(SEG.map(s => [s.segment, s]));
+  const core = ["Champions", "Loyal"].map(s => segBy[s]);
+  const corePctC = core.reduce((a, s) => a + s.pct_customers, 0), corePctS = core.reduce((a, s) => a + s.pct_sales, 0);
+  const risk = ["At Risk", "Can't Lose"].map(s => segBy[s]);
+  const riskN = risk.reduce((a, s) => a + s.customers, 0), riskSales = risk.reduce((a, s) => a + s.sales, 0);
+  const hib = segBy["Hibernating"];
+  const MIG = DATA.gold_migration;
+  const migRow = from => { const r = MIG.filter(m => m.from_segment === from); const t = r.reduce((a, m) => a + m.customers, 0); const get = to => (r.find(m => m.to_segment === to) || { customers: 0 }).customers; return { t, get }; };
+  const newQ3 = migRow("New since Q3"), champQ3 = migRow("Champions"), loyalQ3 = migRow("Loyal");
+  const m1 = DATA.gold_cohorts.filter(c => c.month_number === 1 && c.cohort_month !== "2010-12-01" && c.cohort_month < "2011-11-01");
+  const m1avg = m1.reduce((a, c) => a + c.retention_pct, 0) / m1.length;
+
+  // ---------- header numbers ----------
+  $("#rawRows").textContent = fmt(K.raw_rows);
+  $("#bronzeRows").textContent = fmt(K.raw_rows);
+  $("#kpis").innerHTML = [
+    [fmt(K.customers), "customers analysed"],
+    [gbp(K.sales), "in product sales"],
+    [K.repeat_rate_pct.toFixed(0) + "%", "of customers ordered more than once"],
+    [Math.round(corePctS) + "%", `of sales from ${Math.round(corePctC)}% of customers`]
+  ].map(([b, s]) => `<div class="kpi"><b>${b}</b><span>${s}</span></div>`).join("");
+
+  // ---------- findings ----------
+  $("#findings").innerHTML = [
+    [`${Math.round(corePctC)}% → ${Math.round(corePctS)}%`, `Champions and Loyal customers (${fmt(core[0].customers + core[1].customers)} people, ${Math.round(corePctC)}% of the base) bring in ${Math.round(corePctS)}% of all sales. Protecting this group matters more than anything else on this page.`],
+    [gbp(riskSales), `of past sales sits with ${fmt(riskN)} At Risk and Can't Lose customers: repeat buyers who have not ordered in over 3 months. Winning back even a third of them is cheaper than finding new customers.`],
+    [`${Math.round(100 * newQ3.get("About to Sleep") / newQ3.t)}%`, `of the ${fmt(newQ3.t)} customers acquired since October are already "About to Sleep". Across 2011, only ${m1avg.toFixed(0)}% of new customers order again the following month: the second order is the weak point.`],
+    [`${Math.round(hib.pct_customers)}% → ${Math.round(hib.pct_sales)}%`, `Hibernating customers are ${Math.round(hib.pct_customers)}% of the base but only ${Math.round(hib.pct_sales)}% of sales. Keep them on low-cost, automated reminders rather than paid campaigns.`],
+  ].map(([b, p]) => `<div class="finding"><b>${b}</b><p>${p}</p></div>`).join("");
+
+  // ---------- 1. paired bars ----------
+  (function segBars() {
+    const rows = [...SEG].sort((a, b) => b.pct_sales - a.pct_sales);
+    const W = 760, labelW = 150, rowH = 34, barH = 11, gap = 2, H = rows.length * rowH + 24;
+    const max = Math.max(...rows.map(r => Math.max(r.pct_sales, r.pct_customers)));
+    const x = v => labelW + (W - labelW - 60) * v / max;
+    const s = svg(W, H);
+    [0, 10, 20, 30, 40, 50].filter(v => v <= max + 5).forEach(v => {
+      el("line", { x1: x(v), x2: x(v), y1: 0, y2: H - 20, stroke: "#eef2f6" }, s);
+      el("text", { x: x(v), y: H - 6, "text-anchor": "middle", class: "tick" }, s, v + "%");
+    });
+    rows.forEach((r, i) => {
+      const y = i * rowH + 6;
+      el("text", { x: labelW - 10, y: y + barH + 2, "text-anchor": "end", class: "lbl" }, s, r.segment);
+      const b1 = el("rect", { x: labelW, y, width: Math.max(1, x(r.pct_customers) - labelW), height: barH, rx: 3, fill: "var(--s1)" }, s);
+      const b2 = el("rect", { x: labelW, y: y + barH + gap, width: Math.max(1, x(r.pct_sales) - labelW), height: barH, rx: 3, fill: "var(--s2)" }, s);
+      el("text", { x: x(r.pct_customers) + 5, y: y + barH - 1, class: "lbl-muted" }, s, r.pct_customers + "%");
+      el("text", { x: x(r.pct_sales) + 5, y: y + 2 * barH + gap - 1, class: "lbl-muted" }, s, r.pct_sales + "%");
+      const hit = el("rect", { x: 0, y: y - 4, width: W, height: rowH - 2, fill: "transparent", class: "hit" }, s);
+      bindTip(hit, `<b>${esc(r.segment)}</b><br>${fmt(r.customers)} customers (${r.pct_customers}%)<br>${gbp(r.sales)} sales (${r.pct_sales}%)<br>Median ${r.median_recency_days} days since last order · ${r.avg_orders} orders on average`);
+    });
+    $("#segBars").appendChild(s);
+    $("#segTable").innerHTML = `<tr><th>Segment</th><th>Customers</th><th>% cust.</th><th>Sales</th><th>% sales</th><th>Median recency</th><th>Avg orders</th><th>Avg order value</th><th>Return rate</th></tr>` +
+      rows.map(r => `<tr><td>${esc(r.segment)}</td><td>${fmt(r.customers)}</td><td>${r.pct_customers}%</td><td>${gbp(r.sales)}</td><td>${r.pct_sales}%</td><td>${r.median_recency_days} days</td><td>${r.avg_orders}</td><td>£${fmt(r.avg_order_value)}</td><td>${r.return_rate_pct}%</td></tr>`).join("");
+  })();
+
+  // ---------- 2. R x F grid ----------
+  (function rfGrid() {
+    const cells = DATA.gold_rf_grid, max = Math.max(...cells.map(c => c.customers));
+    const W = 760, left = 92, top = 26, cw = (W - left) / 5, ch = 62, H = top + ch * 5 + 34;
+    const s = svg(W, H);
+    const fLab = ["1 order", "2", "3", "4–5", "6+"], rLab = { 5: "≤ 14 days", 4: "15–30", 3: "31–90", 2: "91–180", 1: "> 180 days" };
+    fLab.forEach((t, i) => el("text", { x: left + cw * i + cw / 2, y: top + ch * 5 + 18, "text-anchor": "middle", class: "tick" }, s, "F" + (i + 1) + " · " + t));
+    el("text", { x: left + cw * 2.5, y: H - 2, "text-anchor": "middle", class: "lbl-muted" }, s, "Frequency →");
+    el("text", { x: 0, y: 12, class: "lbl-muted" }, s, "Recency ↓");
+    [5, 4, 3, 2, 1].forEach((r, ri) => el("text", { x: left - 10, y: top + ch * ri + ch / 2 + 4, "text-anchor": "end", class: "tick" }, s, "R" + r + " · " + rLab[r]));
+    cells.forEach(c => {
+      const xi = c.f - 1, yi = 5 - c.r, t = Math.sqrt(c.customers / max);
+      const g = el("g", {}, s);
+      el("rect", { x: left + xi * cw + 1, y: top + yi * ch + 1, width: cw - 2, height: ch - 2, rx: 6, fill: ramp(t) }, g);
+      el("text", { x: left + xi * cw + cw / 2, y: top + yi * ch + ch / 2 - 3, "text-anchor": "middle", "font-size": 13, "font-weight": 700, fill: inkOn(t) }, g, fmt(c.customers));
+      el("text", { x: left + xi * cw + cw / 2, y: top + yi * ch + ch / 2 + 13, "text-anchor": "middle", "font-size": 10.5, fill: inkOn(t), opacity: .9 }, g, c.segment);
+      bindTip(g, `<b>R${c.r} · F${c.f} → ${esc(c.segment)}</b><br>${fmt(c.customers)} customers<br>${gbp(c.sales)} sales`);
+    });
+    $("#rfGrid").appendChild(s);
+  })();
+
+  // ---------- 3a. segment trend ----------
+  (function trend() {
+    const keys = [["Champions", "var(--s1)"], ["Loyal", "var(--s2)"], ["At Risk", "var(--s3)"], ["Hibernating", "var(--s4)"]];
+    const T = DATA.gold_segment_trend, labels = [...new Set(T.map(t => t.label))];
+    const val = (seg, l) => (T.find(t => t.segment === seg && t.label === l) || { customers: 0 }).customers;
+    const W = 520, H = 280, L = 44, R = 96, Tp = 12, B = 30;
+    const max = Math.ceil(Math.max(...keys.flatMap(([k]) => labels.map(l => val(k, l)))) / 250) * 250;
+    const x = i => L + (W - L - R) * i / (labels.length - 1), y = v => Tp + (H - Tp - B) * (1 - v / max);
+    const s = svg(W, H);
+    for (let v = 0; v <= max; v += 250) { el("line", { x1: L, x2: W - R, y1: y(v), y2: y(v), stroke: "#eef2f6" }, s); el("text", { x: L - 8, y: y(v) + 4, "text-anchor": "end", class: "tick" }, s, fmt(v)); }
+    labels.forEach((l, i) => el("text", { x: x(i), y: H - 8, "text-anchor": "middle", class: "tick" }, s, l));
+    const ends = keys.map(([k, col]) => {
+      const pts = labels.map((l, i) => [x(i), y(val(k, l))]);
+      el("polyline", { points: pts.map(p => p.join(",")).join(" "), fill: "none", stroke: col, "stroke-width": 2, "stroke-linejoin": "round", "stroke-linecap": "round" }, s);
+      pts.forEach(p => el("circle", { cx: p[0], cy: p[1], r: 4, fill: col, stroke: "#fff", "stroke-width": 2 }, s));
+      return { k, col, y: pts[pts.length - 1][1] };
+    });
+    ends.sort((a, b) => a.y - b.y).forEach((e, i, arr) => { if (i && e.y - arr[i - 1].y < 14) e.y = arr[i - 1].y + 14; el("text", { x: W - R + 10, y: e.y + 4, class: "lbl" }, s, e.k); });
+    const cross = el("line", { y1: Tp, y2: H - B, stroke: "#94a3b8", "stroke-dasharray": "3 3", opacity: 0 }, s);
+    labels.forEach((l, i) => {
+      const hit = el("rect", { x: x(i) - (W - L - R) / (labels.length - 1) / 2, y: 0, width: (W - L - R) / (labels.length - 1), height: H - B, fill: "transparent" }, s);
+      const html = `<b>${l}</b><br>` + keys.map(([k]) => `${esc(k)}: ${fmt(val(k, l))}`).join("<br>");
+      hit.addEventListener("mousemove", e => { cross.setAttribute("x1", x(i)); cross.setAttribute("x2", x(i)); cross.setAttribute("opacity", 1); showTip(e, html); });
+      hit.addEventListener("mouseleave", () => { cross.setAttribute("opacity", 0); hideTip(); });
+    });
+    $("#trendLegend").innerHTML = keys.map(([k, c]) => `<span><i style="background:${c}"></i>${esc(k)}</span>`).join("");
+    $("#trend").appendChild(s);
+  })();
+
+  // movement summary (computed from the migration table)
+  (function moves() {
+    const pct = (r, ...to) => Math.round(100 * to.reduce((a, t) => a + r.get(t), 0) / r.t);
+    const atRisk = migRow("At Risk"), pot = migRow("Potential Loyalist");
+    $("#moves").innerHTML = [
+      `<b>Champions churn at the top.</b> ${pct(champQ3, "Loyal")}% of Q3's ${fmt(champQ3.t)} Champions dropped to Loyal: still buying, but not in the last two weeks.`,
+      `<b>Loyal customers move both ways.</b> ${pct(loyalQ3, "Champions")}% stepped up to Champions, while ${pct(loyalQ3, "At Risk", "Can't Lose")}% slipped to At Risk or Can't Lose.`,
+      `<b>Win-back is possible.</b> ${pct(atRisk, "Champions", "Loyal")}% of Q3's At Risk customers came back as Loyal or Champions during the Q4 peak.`,
+      `<b>The middle tier is worth nurturing.</b> Within one quarter, ${pct(pot, "Champions", "Loyal")}% of Potential Loyalists and ${pct(migRow("Need Attention"), "Champions", "Loyal")}% of Need Attention customers became Loyal or Champions.`,
+    ].map(t => `<li>${t}</li>`).join("");
+  })();
+
+  // ---------- 3b. migration matrix ----------
+  (function migration() {
+    const order = ["Champions", "Loyal", "Potential Loyalist", "New", "Promising", "Need Attention", "About to Sleep", "At Risk", "Can't Lose", "Hibernating"];
+    const from = ["New since Q3", ...order].filter(f => MIG.some(m => m.from_segment === f));
+    const to = order.filter(t => MIG.some(m => m.to_segment === t));
+    const short = { "Potential Loyalist": "Pot. Loyalist", "Need Attention": "Need Attn.", "About to Sleep": "About to Sleep", "New since Q3": "New since Q3" };
+    const W = 1000, left = 120, top = 34, cw = (W - left) / to.length, ch = 30, H = top + ch * from.length + 6;
+    const s = svg(W, H);
+    to.forEach((t, i) => el("text", { x: left + cw * i + cw / 2, y: top - 12, "text-anchor": "middle", class: "tick" }, s, short[t] || t));
+    from.forEach((f, ri) => {
+      const r = migRow(f);
+      el("text", { x: left - 8, y: top + ch * ri + ch / 2 + 4, "text-anchor": "end", class: "tick" }, s, short[f] || f);
+      to.forEach((t, ci) => {
+        const n = r.get(t), pct = r.t ? 100 * n / r.t : 0, tt = pct / 100;
+        const g = el("g", {}, s);
+        el("rect", { x: left + ci * cw + 1, y: top + ri * ch + 1, width: cw - 2, height: ch - 2, rx: 3, fill: n ? ramp(Math.sqrt(tt)) : "#f8fafc" }, g);
+        if (pct >= 5) el("text", { x: left + ci * cw + cw / 2, y: top + ri * ch + ch / 2 + 4, "text-anchor": "middle", "font-size": 10, "font-weight": 600, fill: inkOn(Math.sqrt(tt)) }, g, Math.round(pct) + "%");
+        if (n) bindTip(g, `<b>${esc(f)} → ${esc(t)}</b><br>${fmt(n)} of ${fmt(r.t)} customers (${pct.toFixed(1)}%)`);
+      });
+    });
+    $("#migration").appendChild(s);
+  })();
+
+  // ---------- 4. cohorts ----------
+  (function cohorts() {
+    const C = DATA.gold_cohorts, months = [...new Set(C.map(c => c.cohort_month))].filter(m => m !== "2011-12-01");
+    const maxN = Math.max(...C.map(c => c.month_number));
+    const W = 900, left = 110, top = 26, cw = (W - left) / (maxN + 1), ch = 26, H = top + ch * months.length + 4;
+    const s = svg(W, H);
+    for (let n = 0; n <= maxN; n++) el("text", { x: left + cw * n + cw / 2, y: top - 10, "text-anchor": "middle", class: "tick" }, s, n === 0 ? "Month 0" : "+" + n);
+    months.forEach((m, ri) => {
+      const rows = C.filter(c => c.cohort_month === m), size = rows.find(r => r.month_number === 0).customers;
+      el("text", { x: left - 8, y: top + ch * ri + ch / 2 + 4, "text-anchor": "end", class: "tick" }, s, `${monthName(m)} · ${fmt(size)}`);
+      rows.forEach(c => {
+        const t = c.month_number === 0 ? 1 : Math.min(1, c.retention_pct / 45), g = el("g", {}, s);
+        const partial = monthOffset(m, c.month_number) === "2011-12-01";
+        el("rect", { x: left + c.month_number * cw + 1, y: top + ri * ch + 1, width: cw - 2, height: ch - 2, rx: 3, fill: c.month_number === 0 ? "#e2e8f0" : ramp(t), opacity: partial ? .45 : 1 }, g);
+        el("text", { x: left + c.month_number * cw + cw / 2, y: top + ri * ch + ch / 2 + 4, "text-anchor": "middle", "font-size": 10, "font-weight": 600, fill: c.month_number === 0 ? "#475569" : inkOn(t) }, g, c.month_number === 0 ? "100%" : Math.round(c.retention_pct) + "%");
+        bindTip(g, `<b>${monthName(m)} cohort, month +${c.month_number}</b><br>${fmt(c.customers)} of ${fmt(size)} customers ordered (${c.retention_pct}%)${partial ? "<br><i>Dec 2011: 9 days only</i>" : ""}`);
+      });
+    });
+    function monthOffset(iso, n) { const d = new Date(iso + "T00:00:00"); d.setMonth(d.getMonth() + n); return d.toISOString().slice(0, 7) + "-01"; }
+    $("#cohorts").appendChild(s);
+  })();
+
+  // ---------- 5. monthly small multiples ----------
+  function monthlyBars(target, key, f) {
+    const M = DATA.gold_monthly, W = 520, H = 220, L = 52, Tp = 10, B = 26;
+    const max = Math.max(...M.map(m => m[key])) * 1.08, bw = (W - L) / M.length;
+    const y = v => Tp + (H - Tp - B) * (1 - v / max);
+    const s = svg(W, H);
+    [0, .5, 1].forEach(p => { const v = max / 1.08 * p; el("line", { x1: L, x2: W, y1: y(v), y2: y(v), stroke: "#eef2f6" }, s); el("text", { x: L - 8, y: y(v) + 4, "text-anchor": "end", class: "tick" }, s, f(v)); });
+    M.forEach((m, i) => {
+      const partial = i === M.length - 1, g = el("g", {}, s);
+      const bx = L + i * bw + 3, h = H - B - y(m[key]);
+      el("path", { d: `M${bx},${H - B} v${-(h - 4)} q0,-4 4,-4 h${bw - 14} q4,0 4,4 v${h - 4} z`, fill: "var(--s1)", opacity: partial ? .35 : 1 }, g);
+      if (i % 2 === 0 || i === M.length - 1) el("text", { x: bx + (bw - 6) / 2, y: H - 8, "text-anchor": "middle", class: "tick" }, s, monthName(m.month));
+      el("rect", { x: L + i * bw, y: 0, width: bw, height: H - B, fill: "transparent" }, g);
+      bindTip(g, `<b>${monthName(m.month)}${partial ? " (9 days)" : ""}</b><br>${gbp(m.sales)} sales<br>${fmt(m.active_customers)} active customers<br>${fmt(m.orders)} orders`);
+    });
+    $(target).appendChild(s);
+  }
+  monthlyBars("#mSales", "sales", v => gbp(v));
+  monthlyBars("#mActive", "active_customers", v => fmt(v));
+
+  // ---------- actions ----------
+  const act = [
+    ["p1", "Win back the quiet regulars", ["At Risk", "Can't Lose"], `Personal outreach from an account manager, early access to new ranges, and a reorder reminder built from their past baskets. Small group, high value: ${gbp(riskSales)} of past sales.`],
+    ["p1", "Protect the top tier", ["Champions", "Loyal"], `Loyalty perks and priority service rather than discounts. Track the Champions → Loyal slide every month: half of Q3's Champions had not ordered in the last 14 days by 10 December.`],
+    ["p2", "Earn the second order", ["New", "Promising", "Potential Loyalist"], `A welcome series timed to the typical reorder gap, with a small incentive on order two. This is the step where most new customers drop off.`],
+    ["p2", "Wake them up before they sleep", ["About to Sleep", "Need Attention"], `Triggered emails at 30 and 60 days of inactivity, featuring best-sellers from their last order. Cheap to automate, and it catches customers before they slide to Hibernating.`],
+    ["p3", "Keep costs low on the dormant tail", ["Hibernating"], `Low-frequency newsletters and seasonal campaigns only, and no paid retargeting: ${Math.round(hib.pct_customers)}% of customers, ${Math.round(hib.pct_sales)}% of sales.`],
+    ["p3", "Measure it", [], `Rebuild the segments monthly with the same pipeline and report movement between segments as the KPI, not just the size of each segment.`],
+  ];
+  $("#actions").innerHTML = act.map(([p, h, segs, t]) => {
+    const n = segs.reduce((a, s) => a + (segBy[s] ? segBy[s].customers : 0), 0);
+    const pr = { p1: "Priority 1", p2: "Priority 2", p3: "Priority 3" }[p];
+    return `<div class="action"><span class="tag ${p}">${pr}</span><h3>${h}</h3><div class="seg">${segs.length ? esc(segs.join(" · ")) + " · " + fmt(n) + " customers" : "All segments"}</div><p>${t}</p></div>`;
+  }).join("");
+
+  // ---------- silver list ----------
+  $("#silverList").innerHTML = [
+    "Removed exact duplicate lines",
+    "Dropped lines without a customer ID",
+    "Separated cancellations and returns",
+    "Removed purchases that were later cancelled in full",
+    "Excluded postage, fees and manual adjustments",
+    `Result: ${fmt(K.clean_lines)} sales lines, ${fmt(K.orders)} orders`
+  ].map(t => `<li>${t}</li>`).join("");
+})();
+</script>
+</body>
+</html>
