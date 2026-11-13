@@ -4,7 +4,7 @@
 
 An end-to-end customer analytics project on **541,909 real transactions** from a UK online gift retailer (UCI Online Retail, Dec 2010 – Dec 2011), built as a bronze → silver → gold SQL pipeline.
 
-**[▶ View the interactive report](https://pervejhosen.github.io/projects/customer-segmentation/)**
+**[▶ View the interactive report](https://pervejhosen.com/projects/customer-segmentation/)**
 
 ![Share of customers vs share of sales by segment](docs/segments.png)
 
@@ -101,4 +101,4 @@ Daqing Chen, *Online Retail*, UCI Machine Learning Repository, 2015. [https://do
 
 ---
 
-Built by **[Pervej Hosen](https://pervejhosen.github.io)** · Sr. Power BI Developer & Analytics Engineer
+Built by **[Pervej Hosen](https://pervejhosen.com)** · Sr. Power BI Developer & Analytics Engineer
